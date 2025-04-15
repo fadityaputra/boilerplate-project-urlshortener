@@ -8,14 +8,10 @@
     ],
     "routes": [
       {
-        "src": "/api/shorturl",
-        "methods": ["POST"],
-        "dest": "/index.js"
-      },
-      {
-        "src": "/api/shorturl/(.*)",
+        "src": "/(.*)",
         "dest": "/index.js"
       }
     ]
   }
+  
   
