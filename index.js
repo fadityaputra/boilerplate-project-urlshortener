@@ -1,24 +1,54 @@
-require('dotenv').config();
+
 const express = require('express');
-const cors = require('cors');
+const dns = require('dns');
+const bodyParser = require('body-parser');
+
+// Initialize Express app
 const app = express();
 
-// Basic Configuration
-const port = process.env.PORT || 3000;
+// Middleware
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
-app.use(cors());
+// In-memory "database"
+const urlDatabase = {};
+let counter = 1;
 
-app.use('/public', express.static(`${process.cwd()}/public`));
+// POST: Shorten URL
+app.post('/api/shorturl', (req, res) => {
+  const originalUrl = req.body.url;
 
-app.get('/', function(req, res) {
-  res.sendFile(process.cwd() + '/views/index.html');
+  try {
+    const urlObj = new URL(originalUrl);
+    const hostname = urlObj.hostname;
+
+    dns.lookup(hostname, (err) => {
+      if (err) return res.json({ error: 'invalid url' });
+
+      const shortUrl = counter++;
+      urlDatabase[shortUrl] = originalUrl;
+
+      res.json({
+        original_url: originalUrl,
+        short_url: shortUrl
+      });
+    });
+  } catch (err) {
+    res.json({ error: 'invalid url' });
+  }
 });
 
-// Your first API endpoint
-app.get('/api/hello', function(req, res) {
-  res.json({ greeting: 'hello API' });
+// GET: Redirect to original URL
+app.get('/api/shorturl/:short_url', (req, res) => {
+  const shortUrl = req.params.short_url;
+  const originalUrl = urlDatabase[shortUrl];
+
+  if (originalUrl) {
+    res.redirect(originalUrl);
+  } else {
+    res.json({ error: 'invalid short url' });
+  }
 });
 
-app.listen(port, function() {
-  console.log(`Listening on port ${port}`);
-});
+// Export app as Vercel handler
+module.exports = app;
